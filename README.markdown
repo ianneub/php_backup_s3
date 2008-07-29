@@ -20,9 +20,9 @@ I've used this program in production for about a year with no problems. But, you
 4. Setup a cronjob to run the backups for you!
   1. For example, create a file called /etc/cron.daily/backup and add this code to it:
   
-    <pre><code>#!/bin/bash
-    /usr/bin/php /path/to/script/backup.php    
-    exit 0</code></pre>
+<pre><code>#!/bin/bash
+/usr/bin/php /path/to/script/backup.php    
+exit 0</code></pre>
 
 ## About this script
 
