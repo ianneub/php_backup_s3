@@ -12,6 +12,18 @@ I've used this program in production for about a year with no problems. But, you
 * Uses URL type storage keys, so it's easy to browse the backup bucket
 * (optionally) Removes old backups according to a [grandfather-father-son](http://en.wikipedia.org/wiki/Grandfather-Father-Son_Backup) based schedule
 
+## Installation
+
+1. Add your Amazon AWS access key and password to the backup.inc.php file.
+2. Customize the included backup.php file to suit your needs
+3. Upload to your server
+4. Setup a cronjob to run the backups for you!
+  1. For example, create a file called /etc/cron.daily/backup and add this code to it:
+  
+    <pre><code>#!/bin/bash
+    /usr/bin/php /path/to/script/backup.php    
+    exit 0</code></pre>
+
 ## About this script
 
 This set of scripts ships with three files:
