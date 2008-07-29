@@ -18,11 +18,12 @@ I've used this program in production for about a year with no problems. But, you
 2. Customize the included backup.php file to suit your needs
 3. Upload to your server
 4. Setup a cronjob to run the backups for you!
-  1. For example, create a file called /etc/cron.daily/backup and add this code to it:
+
+For example, create a file called /etc/cron.daily/backup and add this code to it:
   
-<pre><code>#!/bin/bash
-/usr/bin/php /path/to/script/backup.php    
-exit 0</code></pre>
+    #!/bin/bash
+    /usr/bin/php /path/to/script/backup.php    
+    exit 0
 
 ## About this script
 
@@ -46,6 +47,13 @@ This allows you to keep a very detailed history of your files during the most re
 To disable this feature, comment out the following line from backup.inc.php:
 
     deleteBackups($BACKUP_BUCKET);
+    
+### Requirements
+
+* PHP 5 or higher
+* [PHP curl](php.net/manual/en/intro.curl.php)
+* GNU/Linux environment
+
 
 ## About the author
 
