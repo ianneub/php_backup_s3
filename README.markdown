@@ -57,7 +57,7 @@ To disable this feature, comment out the following line from backup.inc.php:
 
 ## About the author
 
-I wrote this small program to help backup my virtual machines hosted at various places. I figured someone might be able to make use of it, so I've published it as open source.
+My name is [Ian](http://www.ianneubert.com/). I wrote this small program to help backup my virtual machines hosted at various places. I figured someone might be able to make use of it, so I've published it as open source. I also wanted a way to store my version history, learn to use git, and do it for free. Thanks [github](http://github.com)!
 
 ## ToDo
 
