@@ -1,4 +1,7 @@
 <?php
+// AWS access info
+define('awsAccessKey', '');
+define('awsSecretKey', '');
 
 require_once('include/backup.inc.php');
 
@@ -7,7 +10,6 @@ require_once('include/backup.inc.php');
 
 backupDBs('localhost','username','password','my-database-backup');
 
-backupFiles(array('/home/myuser'),'me');
-backupFiles(array('/etc'),'config-files');
+backupFiles(array('/home/myuser', '/etc'),'me');
 backupFiles(array('/var/www'),'web files');
 ?>

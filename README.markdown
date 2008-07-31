@@ -14,9 +14,9 @@ I've used this program in production for about a year with no problems. But, you
 
 ## Installation
 
-1. Add your Amazon AWS access key and password to the backup.inc.php file.
-2. Customize the included backup.php file to suit your needs
-3. Upload to your server
+1. Add your Amazon AWS access key and password in the backup.php file provided.
+2. Customize the files and database servers that are backed up.
+3. Upload to your server.
 4. Setup a cronjob to run the backups for you!
 
 For example, create a file called /etc/cron.daily/backup and add this code to it:
@@ -51,7 +51,8 @@ To disable this feature, comment out the following line from backup.inc.php:
 ### Requirements
 
 * PHP 5 or higher
-* [PHP curl](php.net/manual/en/intro.curl.php)
+* [PHP curl](http://php.net/manual/en/intro.curl.php)
+* [PHP mysql](http://php.net/mysql)
 * GNU/Linux environment
 
 

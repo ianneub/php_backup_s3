@@ -7,10 +7,6 @@ require_once('S3.php');
 $MYSQL_OPTIONS = '--quote-names --quick --add-drop-table --add-locks --allow-keywords --disable-keys --extended-insert --single-transaction --create-options --comments --net_buffer_length=16384';
 $BACKUP_BUCKET = 'igoblue_backup';
 
-// AWS access info
-define('awsAccessKey', '');
-define('awsSecretKey', '');
-
 //Setup S3 class
 $s3 = new S3(awsAccessKey, awsSecretKey);
 
