@@ -25,6 +25,10 @@ For example, create a file called /etc/cron.daily/backup and add this code to it
     /usr/bin/php /path/to/script/backup.php    
     exit 0
 
+NOTE: Make sure to set the /etc/cron.daily/backup file to be executable. Like this:
+
+    chmod +x /etc/cron.daily/backup
+
 ## About this script
 
 This set of scripts ships with three files:
