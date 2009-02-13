@@ -1,11 +1,13 @@
 <?php
+// can't just kill the script
+set_time_limit(0);
 
 // includes
 require_once('S3.php');
 
 //Setup variables
 $MYSQL_OPTIONS = '--quote-names --quick --add-drop-table --add-locks --allow-keywords --disable-keys --extended-insert --single-transaction --create-options --comments --net_buffer_length=16384';
-$BACKUP_BUCKET = 'igoblue_backup';
+$BACKUP_BUCKET = awsBucket;
 
 //Setup S3 class
 $s3 = new S3(awsAccessKey, awsSecretKey);
@@ -22,13 +24,13 @@ function backupFiles($targets, $prefix = '') {
 	foreach ($targets as $target) {
 		// compress local files
 		$cleanTarget = urlencode($target);
-		`tar cjf $prefix-$cleanTarget.tar.bz2 $target`;
+		`tar cjf "$prefix-$cleanTarget.tar.bz2" "$target"`;
 
 		// upload to s3
 		$s3->putObjectFile("$prefix-$cleanTarget.tar.bz2",$BACKUP_BUCKET,s3Path($prefix,$target."-backup.tar.bz2"));
 		
 		// remove temp file
-		`rm -rf $prefix-$cleanTarget.tar.bz2`;
+		`rm -rf "$prefix-$cleanTarget.tar.bz2"`;
 	}
 }
 

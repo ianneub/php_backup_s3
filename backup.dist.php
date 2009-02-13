@@ -2,6 +2,7 @@
 // AWS access info
 define('awsAccessKey', '');
 define('awsSecretKey', '');
+define('awsBucket', '');
 
 require_once('include/backup.inc.php');
 
