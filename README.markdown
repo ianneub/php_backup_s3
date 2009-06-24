@@ -65,7 +65,6 @@ You can optionally run the backups every hour. For now it will store the full 24
 * GNU/Linux environment
 * Other POSIX environments should work, but not tested
 
-
 ## About the author
 
 My name is [Ian](http://www.ianneubert.com/). I wrote this small program to help backup my virtual machines hosted at various places. I figured someone might be able to make use of it, so I've published it as open source. I also wanted a way to store my version history, learn to use git, and do it for free. Thanks [github](http://github.com)!
@@ -74,3 +73,4 @@ My name is [Ian](http://www.ianneubert.com/). I wrote this small program to help
 
 * Add configuration documentation
 * Comment code
+* Delete hourly backups after X days
