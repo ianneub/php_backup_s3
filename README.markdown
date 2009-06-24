@@ -15,7 +15,7 @@ I've used this program in production for over a year with no problems. But, your
 ## Installation
 
 1. Copy the backup.dist.php file to a new file name, like backup.php
-2. Add your Amazon AWS access key and password in the backup.php file provided.
+2. Add your Amazon AWS access key, password, and bucket in the backup.php file provided.
 3. Customize the files and database servers that are backed up.
 4. Upload to your server.
 5. Setup a cronjob to run the backups for you!
@@ -52,6 +52,10 @@ This allows you to keep a very detailed history of your files during the most re
 To disable this feature, comment out the following line from backup.inc.php:
 
     deleteBackups($BACKUP_BUCKET);
+    
+### Hourly backups
+
+You can optionally run the backups every hour. For now it will store the full 24 backup sets per day as a group according to the above schedule. In the future I want to remove a lot of the hourly backups to save space.
     
 ### Requirements
 

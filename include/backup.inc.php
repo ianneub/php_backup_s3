@@ -12,7 +12,7 @@ $s3 = new S3(awsAccessKey, awsSecretKey);
 deleteBackups(awsBucket);
 
 //Setup variables
-$mysql_backup_options = mysqlOptions;
+$mysql_backup_options = mysqlDumpOptions;
 
 // Backup functions
 
@@ -119,11 +119,15 @@ function deleteBackups($bucket) {
 }
 
 function s3Path($prefix, $name, $timestamp = null) {
-	if (is_null($timestamp)) $timestamp = time();
-	
-	$date = date("Y/m/d/",$timestamp);
-	
-	return "backups/".$date.$prefix.$name;
+  if (is_null($timestamp)) $timestamp = time();
+  
+  $date = date("Y/m/d/",$timestamp);
+  
+  if (hourly) {
+    return "backups/".$date.$prefix.'/'.date('H',$timestamp).$name;
+  } else{
+    return "backups/".$date.$prefix.$name;
+  }
 }
 
 ?>
