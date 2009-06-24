@@ -2,7 +2,7 @@
 
 This program will backup file paths and [MySQL](http://www.mysql.com) databases to [Amazon's S3](http://www.amazonaws.com/) storage cloud service.
 
-I've used this program in production for about a year with no problems. But, your results may vary.
+I've used this program in production for over a year with no problems. But, your results may vary.
 
 ## Features
 
@@ -59,6 +59,7 @@ To disable this feature, comment out the following line from backup.inc.php:
 * [PHP curl](http://php.net/manual/en/intro.curl.php)
 * [PHP mysql](http://php.net/mysql)
 * GNU/Linux environment
+* Other POSIX environments should work, but not tested
 
 
 ## About the author

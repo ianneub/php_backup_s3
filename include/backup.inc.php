@@ -5,21 +5,20 @@ set_time_limit(0);
 // includes
 require_once('S3.php');
 
-//Setup variables
-$MYSQL_OPTIONS = '--quote-names --quick --add-drop-table --add-locks --allow-keywords --disable-keys --extended-insert --single-transaction --create-options --comments --net_buffer_length=16384';
-$BACKUP_BUCKET = awsBucket;
-
 //Setup S3 class
 $s3 = new S3(awsAccessKey, awsSecretKey);
 
 //delete old backups
-deleteBackups($BACKUP_BUCKET);
+deleteBackups(awsBucket);
+
+//Setup variables
+$mysql_backup_options = mysqlOptions;
 
 // Backup functions
 
 // Backup files and compress for storage
 function backupFiles($targets, $prefix = '') {
-	global $BACKUP_BUCKET, $s3;
+	global $s3;
 		
 	foreach ($targets as $target) {
 		// compress local files
@@ -27,7 +26,7 @@ function backupFiles($targets, $prefix = '') {
 		`tar cjf "$prefix-$cleanTarget.tar.bz2" "$target"`;
 
 		// upload to s3
-		$s3->putObjectFile("$prefix-$cleanTarget.tar.bz2",$BACKUP_BUCKET,s3Path($prefix,$target."-backup.tar.bz2"));
+		$s3->putObjectFile("$prefix-$cleanTarget.tar.bz2",awsBucket,s3Path($prefix,$target."-backup.tar.bz2"));
 		
 		// remove temp file
 		`rm -rf "$prefix-$cleanTarget.tar.bz2"`;
@@ -35,9 +34,8 @@ function backupFiles($targets, $prefix = '') {
 }
 
 // Backup all Mysql DBs using mysqldump
-function backupDBs($hostname, $username, $password, $prefix = '') {
-	global $MYSQL_OPTIONS, $DATE, $s3;
-	global $BACKUP_BUCKET;
+function backupDBs($hostname, $username, $password, $prefix, $post_backup_query = '') {
+	global $DATE, $s3, $mysql_backup_options;
 	
 	// Connecting, selecting database
 	$link = mysql_connect($hostname, $username, $password) or die('Could not connect: ' . mysql_error());
@@ -56,25 +54,30 @@ function backupDBs($hostname, $username, $password, $prefix = '') {
 	// Free resultset
 	mysql_free_result($result);
 
-	// Closing connection
-	mysql_close($link);
-		
 	//Run backups on each DB found
 	foreach ($databases as $database) {
-		`/usr/bin/mysqldump $MYSQL_OPTIONS --no-data --host=$hostname --user=$username --password='$password' $database | bzip2  > $database-structure-backup.sql.bz2`;
-		`/usr/bin/mysqldump $MYSQL_OPTIONS --host=$hostname --user=$username --password='$password' $database | bzip2 > $database-data-backup.sql.bz2`;
-		$s3->putObjectFile("$database-structure-backup.sql.bz2",$BACKUP_BUCKET,s3Path($prefix,"/".$database."-structure-backup.sql.bz2"));
-		$s3->putObjectFile("$database-data-backup.sql.bz2",$BACKUP_BUCKET,s3Path($prefix,"/".$database."-data-backup.sql.bz2"));
+		`/usr/bin/mysqldump $mysql_backup_options --no-data --host=$hostname --user=$username --password='$password' $database | bzip2  > $database-structure-backup.sql.bz2`;
+		`/usr/bin/mysqldump $mysql_backup_options --host=$hostname --user=$username --password='$password' $database | bzip2 > $database-data-backup.sql.bz2`;
+		$s3->putObjectFile("$database-structure-backup.sql.bz2",awsBucket,s3Path($prefix,"/".$database."-structure-backup.sql.bz2"));
+		$s3->putObjectFile("$database-data-backup.sql.bz2",awsBucket,s3Path($prefix,"/".$database."-data-backup.sql.bz2"));
 		
 		`rm -rf $database-structure-backup.sql.bz2 $database-data-backup.sql.bz2`;
 	}
+	
+	//Run post backup queries if needed
+	if ($post_backup_query != '') {
+	  $result = mysql_query($post_backup_query) or die('Query failed: ' . mysql_error());
+	}
+	
+	// Closing connection
+	mysql_close($link);
 	
 }
 
 function deleteBackups($bucket) {
 	global $s3;
 	
-	//delete the backup from 2 months ago	
+	//delete the backup from 2 months ago
 	$set_date = strtotime('-2 months');
 	
 	//only if it wasn't the first of the month
