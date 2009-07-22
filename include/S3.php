@@ -1,6 +1,6 @@
 <?php
 /**
-* $Id: S3.php 43 2008-12-23 14:37:18Z don.schonknecht $
+* $Id: S3.php 47 2009-07-20 01:25:40Z don.schonknecht $
 *
 * Copyright (c) 2008, Donovan Schönknecht.  All rights reserved.
 *
@@ -32,13 +32,14 @@
 * Amazon S3 PHP class
 *
 * @link http://undesigned.org.za/2007/10/22/amazon-s3-php-class
-* @version 0.3.9
+* @version 0.4.0
 */
 class S3 {
 	// ACL flags
 	const ACL_PRIVATE = 'private';
 	const ACL_PUBLIC_READ = 'public-read';
 	const ACL_PUBLIC_READ_WRITE = 'public-read-write';
+	const ACL_AUTHENTICATED_READ = 'authenticated-read';
 
 	public static $useSSL = true;
 
@@ -89,7 +90,7 @@ class S3 {
 			trigger_error(sprintf("S3::listBuckets(): [%s] %s", $rest->error['code'], $rest->error['message']), E_USER_WARNING);
 			return false;
 		}
-		$results = array(); //var_dump($rest->body);
+		$results = array();
 		if (!isset($rest->body->Buckets)) return $results;
 
 		if ($detailed) {
@@ -276,7 +277,7 @@ class S3 {
 	* @return array | false
 	*/
 	public static function inputResource(&$resource, $bufferSize, $md5sum = '') {
-		if (!is_resource($resource) || $bufferSize <= 0) {
+		if (!is_resource($resource) || $bufferSize < 0) {
 			trigger_error('S3::inputResource(): Invalid resource or buffer size', E_USER_WARNING);
 			return false;
 		}
@@ -298,7 +299,7 @@ class S3 {
 	* @return boolean
 	*/
 	public static function putObject($input, $bucket, $uri, $acl = self::ACL_PRIVATE, $metaHeaders = array(), $requestHeaders = array()) {
-		if ($input == false) return false;
+		if ($input === false) return false;
 		$rest = new S3Request('PUT', $bucket, $uri);
 
 		if (is_string($input)) $input = array(
@@ -315,7 +316,7 @@ class S3 {
 			$rest->data = $input['data'];
 
 		// Content-Length (required)
-		if (isset($input['size']) && $input['size'] > -1)
+		if (isset($input['size']) && $input['size'] >= 0)
 			$rest->size = $input['size'];
 		else {
 			if (isset($input['file']))
@@ -341,7 +342,7 @@ class S3 {
 		}
 
 		// We need to post with Content-Length and Content-Type, MD5 is optional
-		if ($rest->size > 0 && ($rest->fp !== false || $rest->data !== false)) {
+		if ($rest->size >= 0 && ($rest->fp !== false || $rest->data !== false)) {
 			$rest->setHeader('Content-Type', $input['type']);
 			if (isset($input['md5sum'])) $rest->setHeader('Content-MD5', $input['md5sum']);
 
@@ -455,13 +456,19 @@ class S3 {
 	* @param string $bucket Destination bucket name
 	* @param string $uri Destination object URI
 	* @param constant $acl ACL constant
+	* @param array $metaHeaders Optional array of x-amz-meta-* headers
+	* @param array $requestHeaders Optional array of request headers (content type, disposition, etc.)
 	* @return mixed | false
 	*/
-	public static function copyObject($srcBucket, $srcUri, $bucket, $uri, $acl = self::ACL_PRIVATE) {
+	public static function copyObject($srcBucket, $srcUri, $bucket, $uri, $acl = self::ACL_PRIVATE, $metaHeaders = array(), $requestHeaders = array()) {
 		$rest = new S3Request('PUT', $bucket, $uri);
 		$rest->setHeader('Content-Length', 0);
+		foreach ($requestHeaders as $h => $v) $rest->setHeader($h, $v);
+		foreach ($metaHeaders as $h => $v) $rest->setAmzHeader('x-amz-meta-'.$h, $v);
 		$rest->setAmzHeader('x-amz-acl', $acl);
 		$rest->setAmzHeader('x-amz-copy-source', sprintf('/%s/%s', $srcBucket, $srcUri));
+		if (sizeof($requestHeaders) > 0 || sizeof($metaHeaders) > 0)
+			$rest->setAmzHeader('x-amz-metadata-directive', 'REPLACE');
 		$rest = $rest->getResponse();
 		if ($rest->error === false && $rest->code !== 200)
 			$rest->error = array('code' => $rest->code, 'message' => 'Unexpected HTTP status');
@@ -749,6 +756,60 @@ class S3 {
 		urlencode(self::__getHash("GET\n\n\n{$expires}\n/{$bucket}/{$uri}")));
 	}
 
+	/**
+	* Get upload POST parameters for form uploads
+	*
+	* @param string $bucket Bucket name
+	* @param string $uriPrefix Object URI prefix
+	* @param constant $acl ACL constant
+	* @param integer $lifetime Lifetime in seconds
+	* @param integer $maxFileSize Maximum filesize in bytes (default 5MB)
+	* @param string $successRedirect Redirect URL or 200 / 201 status code
+	* @param array $amzHeaders Array of x-amz-meta-* headers
+	* @param array $headers Array of request headers or content type as a string
+	* @param boolean $flashVars Includes additional "Filename" variable posted by Flash
+	* @return object
+	*/
+	public static function getHttpUploadPostParams($bucket, $uriPrefix = '', $acl = self::ACL_PRIVATE, $lifetime = 3600, $maxFileSize = 5242880, $successRedirect = "201", $amzHeaders = array(), $headers = array(), $flashVars = false) {
+		// Create policy object
+		$policy = new stdClass;
+		$policy->expiration = gmdate('Y-m-d\TH:i:s\Z', (time() + $lifetime));
+		$policy->conditions = array();
+		$obj = new stdClass; $obj->bucket = $bucket; array_push($policy->conditions, $obj);
+		$obj = new stdClass; $obj->acl = $acl; array_push($policy->conditions, $obj);
+
+		$obj = new stdClass; // 200 for non-redirect uploads
+		if (is_numeric($successRedirect) && in_array((int)$successRedirect, array(200, 201)))
+			$obj->success_action_status = (string)$successRedirect;
+		else // URL
+			$obj->success_action_redirect = $successRedirect;
+		array_push($policy->conditions, $obj);
+
+		array_push($policy->conditions, array('starts-with', '$key', $uriPrefix));
+		if ($flashVars) array_push($policy->conditions, array('starts-with', '$Filename', ''));
+		foreach (array_keys($headers) as $headerKey)
+			array_push($policy->conditions, array('starts-with', '$'.$headerKey, ''));
+		foreach ($amzHeaders as $headerKey => $headerVal) {
+			$obj = new stdClass; $obj->{$headerKey} = (string)$headerVal; array_push($policy->conditions, $obj);
+		}
+		array_push($policy->conditions, array('content-length-range', 0, $maxFileSize));
+		$policy = base64_encode(str_replace('\/', '/', json_encode($policy)));
+	
+		// Create parameters
+		$params = new stdClass;
+		$params->AWSAccessKeyId = self::$__accessKey;
+		$params->key = $uriPrefix.'${filename}';
+		$params->acl = $acl;
+		$params->policy = $policy; unset($policy);
+		$params->signature = self::__getHash($params->policy);
+		if (is_numeric($successRedirect) && in_array((int)$successRedirect, array(200, 201)))
+			$params->success_action_status = (string)$successRedirect;
+		else
+			$params->success_action_redirect = $successRedirect;
+		foreach ($headers as $headerKey => $headerVal) $params->{$headerKey} = (string)$headerVal;
+		foreach ($amzHeaders as $headerKey => $headerVal) $params->{$headerKey} = (string)$headerVal;
+		return $params;
+	}
 
 	/**
 	* Create a CloudFront distribution
@@ -1201,12 +1262,12 @@ final class S3Request {
 				if ($this->fp !== false) {
 					curl_setopt($curl, CURLOPT_PUT, true);
 					curl_setopt($curl, CURLOPT_INFILE, $this->fp);
-					if ($this->size > 0)
+					if ($this->size >= 0)
 						curl_setopt($curl, CURLOPT_INFILESIZE, $this->size);
 				} elseif ($this->data !== false) {
 					curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $this->verb);
 					curl_setopt($curl, CURLOPT_POSTFIELDS, $this->data);
-					if ($this->size > 0)
+					if ($this->size >= 0)
 						curl_setopt($curl, CURLOPT_BUFFERSIZE, $this->size);
 				} else
 					curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $this->verb);
