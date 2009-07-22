@@ -55,7 +55,7 @@ To disable this feature, comment out the following line from backup.inc.php:
     
 ### Hourly backups
 
-You can optionally run the backups every hour. For now it will store the full 24 backup sets per day as a group according to the above schedule. In the future I want to remove a lot of the hourly backups to save space.
+You can optionally run the backups every hour. Hourly backups will be available for the last 72 hours. Beyond that, Midnight (00) hour backups will be available according to the backup deletion schedule outlined above.
     
 ### Requirements
 
@@ -73,4 +73,3 @@ My name is [Ian](http://www.ianneubert.com/). I wrote this small program to help
 
 * Add configuration documentation
 * Comment code
-* Delete hourly backups after X days

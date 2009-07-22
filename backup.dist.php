@@ -3,6 +3,7 @@
 define('awsAccessKey', '');
 define('awsSecretKey', '');
 define('awsBucket', '');
+define('debug',false);
 
 //Pass these options to mysqldump
 define('mysqlDumpOptions', '--quote-names --quick --add-drop-table --add-locks --allow-keywords --disable-keys --extended-insert --single-transaction --create-options --comments --net_buffer_length=16384');

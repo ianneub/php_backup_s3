@@ -9,7 +9,7 @@ require_once('S3.php');
 $s3 = new S3(awsAccessKey, awsSecretKey);
 
 //delete old backups
-deleteBackups(awsBucket);
+deleteBackups();
 
 //Setup variables
 $mysql_backup_options = mysqlDumpOptions;
@@ -19,7 +19,9 @@ $mysql_backup_options = mysqlDumpOptions;
 // Backup files and compress for storage
 function backupFiles($targets, $prefix = '') {
 	global $s3;
-		
+	
+	if (hourly) deleteHourlyBackups($prefix);
+	
 	foreach ($targets as $target) {
 		// compress local files
 		$cleanTarget = urlencode($target);
@@ -36,6 +38,8 @@ function backupFiles($targets, $prefix = '') {
 // Backup all Mysql DBs using mysqldump
 function backupDBs($hostname, $username, $password, $prefix, $post_backup_query = '') {
 	global $DATE, $s3, $mysql_backup_options;
+	
+	if (hourly) deleteHourlyBackups($prefix);
 	
 	// Connecting, selecting database
 	$link = mysql_connect($hostname, $username, $password) or die('Could not connect: ' . mysql_error());
@@ -74,7 +78,21 @@ function backupDBs($hostname, $username, $password, $prefix, $post_backup_query 
 	
 }
 
-function deleteBackups($bucket) {
+function deleteHourlyBackups($target_prefix) {
+  global $s3;
+  
+  //delete hourly backups, 72 hours before now, except the midnight (00) backup
+	$set_date = strtotime('-72 hours');
+	if (hourly) {
+	  for ($i = 1; $i <= 23; $i++) {
+  	  $prefix = s3Path('','',$set_date,true).$target_prefix."/".str_pad((string)$i,2,"0",STR_PAD_LEFT)."/";
+  	  if (debug) echo $prefix."\n";
+  	  deletePrefix($prefix);
+	  }
+	}
+}
+
+function deleteBackups() {
 	global $s3;
 	
 	//delete the backup from 2 months ago
@@ -84,46 +102,42 @@ function deleteBackups($bucket) {
 	if ((int)date('j',$set_date) === 1) return true;
 	
 	//set s3 "dir" to delete
-	$prefix = s3Path('','',$set_date);
+	$prefix = s3Path('','',$set_date,false);
 	
-	//find files to delete
-	$keys = $s3->getBucket($bucket,$prefix);
-
+	if (debug) echo $prefix."\n";
+	
 	//delete each key found
-	foreach ($keys as $key => $meta) {
-		$s3->deleteObject($bucket,$key);
-	}
-	
-	//echo $prefix."\n";
+	deletePrefix($prefix);
 	
 	//delete the backup from 2 weeks ago
 	$set_date = strtotime('-2 weeks');
 	
 	//only if it wasn't a saturday or the 1st
 	if ((int)date('j',$set_date) === 1 || (string)date('l',$set_date) === "Saturday") return true;
-	
-	//set s3 "dir" to delete
-	$prefix = s3Path('','',$set_date);
-	
-	//find files to delete
-	$keys = $s3->getBucket($bucket,$prefix);
-
-	//delete each key found
-	foreach ($keys as $key => $meta) {
-		$s3->deleteObject($bucket,$key);
-	}
-	
-	//debug
-	//print_r($keys);
-	//echo $prefix."\n";
+  $prefix = s3Path('','',$set_date,false);
+  if (debug) echo $prefix."\n";
+  
+	deletePrefix($prefix);
 }
 
-function s3Path($prefix, $name, $timestamp = null) {
+function deletePrefix($prefix) {
+  global $s3;
+  
+  //find files to delete
+	$keys = $s3->getBucket(awsBucket,$prefix);
+  
+  foreach ($keys as $key => $meta) {
+    if (debug) echo $key."\n";
+		$s3->deleteObject(awsBucket,$key);
+	}
+}
+
+function s3Path($prefix, $name, $timestamp = null, $force_hourly = null) {
   if (is_null($timestamp)) $timestamp = time();
   
   $date = date("Y/m/d/",$timestamp);
   
-  if (hourly) {
+  if (is_null($force_hourly) && hourly) {
     return "backups/".$date.$prefix.'/'.date('H',$timestamp).$name;
   } else{
     return "backups/".$date.$prefix.$name;
