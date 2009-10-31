@@ -24,13 +24,25 @@ function backupFiles($targets, $prefix = '') {
   
   foreach ($targets as $target) {
     
+    if (debug == true) {
+      echo "Backing up: $target\n";
+    }
+    
     if (strpos($target,'/') === 0) {
       $target = strrev(rtrim(strrev($target),'/'));
+    }
+    
+    if (debug == true) {
+      echo "Relative from root: $target\n";
     }
     
     // compress local files
     $cleanTarget = urlencode($target);
     `tar -cjf "$prefix-$cleanTarget.tar.bz2" -C / "$target"`;
+    
+    if (debug == true) {
+      echo "Backing up to: ".s3Path($prefix,"/".$target."-backup.tar.bz2")."\n";
+    }
 
     // upload to s3
     $s3->putObjectFile("$prefix-$cleanTarget.tar.bz2",awsBucket,s3Path($prefix,$target."-backup.tar.bz2"));
@@ -91,7 +103,7 @@ function deleteHourlyBackups($target_prefix) {
   if (hourly) {
     for ($i = 1; $i <= 23; $i++) {
       $prefix = s3Path('','',$set_date,true).$target_prefix."/".str_pad((string)$i,2,"0",STR_PAD_LEFT)."/";
-      if (debug) echo $prefix."\n";
+      if (debug == true) echo $prefix."\n";
       deletePrefix($prefix);
     }
   }
@@ -109,7 +121,7 @@ function deleteBackups() {
   //set s3 "dir" to delete
   $prefix = s3Path('','',$set_date,false);
   
-  if (debug) echo $prefix."\n";
+  if (debug == true) echo "Deleting: ".$prefix."\n";
   
   //delete each key found
   deletePrefix($prefix);
@@ -120,7 +132,7 @@ function deleteBackups() {
   //only if it wasn't a saturday or the 1st
   if ((int)date('j',$set_date) === 1 || (string)date('l',$set_date) === "Saturday") return true;
   $prefix = s3Path('','',$set_date,false);
-  if (debug) echo $prefix."\n";
+  if (debug == true) echo "Deleting: ".$prefix."\n";
   
   deletePrefix($prefix);
 }
@@ -132,7 +144,7 @@ function deletePrefix($prefix) {
   $keys = $s3->getBucket(awsBucket,$prefix);
   
   foreach ($keys as $key => $meta) {
-    if (debug) echo $key."\n";
+    if (debug == true) echo $key."\n";
     $s3->deleteObject(awsBucket,$key);
   }
 }
