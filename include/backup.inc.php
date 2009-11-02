@@ -40,12 +40,14 @@ function backupFiles($targets, $prefix = '') {
     $cleanTarget = urlencode($target);
     `tar -cjf "$prefix-$cleanTarget.tar.bz2" -C / "$target"`;
     
+    $backup_to = s3Path($prefix,"/".$target."-backup.tar.bz2");
+    
     if (debug == true) {
-      echo "Backing up to: ".s3Path($prefix,"/".$target."-backup.tar.bz2")."\n";
+      echo "Backing up to: ".$backup_to."\n";
     }
 
     // upload to s3
-    $s3->putObjectFile("$prefix-$cleanTarget.tar.bz2",awsBucket,s3Path($prefix,$target."-backup.tar.bz2"));
+    $s3->putObjectFile("$prefix-$cleanTarget.tar.bz2",awsBucket,$backup_to);
     
     // remove temp file
     `rm -rf "$prefix-$cleanTarget.tar.bz2"`;
