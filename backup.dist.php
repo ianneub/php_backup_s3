@@ -9,7 +9,7 @@ ini_set('date.timezone', 'America/Los_Angeles');
 //Pass these options to mysqldump
 define('mysqlDumpOptions', '--quote-names --quick --add-drop-table --add-locks --allow-keywords --disable-keys --extended-insert --single-transaction --create-options --comments --net_buffer_length=16384');
 
-define('hourly',false); // Will this script run daily or hourly?
+define('schedule','daily'); // Will this script run weekly, daily, or hourly?
 
 require_once('include/backup.inc.php');
 

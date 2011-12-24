@@ -34,14 +34,14 @@ NOTE: Make sure to set the /etc/cron.daily/backup file to be executable. Like th
 
 This set of scripts ships with three files:
 
-* backup.php--This is an example of how to call the backup functions
+* backup.dist.php--This is an example of how to call the backup functions
 * include/
   * backup.inc.php--All the backup functions are in here
   * S3.php--This is the library to access Amazon S3
 
-### (optional) Backup deletion schedule
+### (optional) Daily backup deletion schedule
 
-A unique feature of this script is the way it will store (and eventually delete) old backups to conserve space, and yet maintain significant backup history. In this method you will have the following full backups:
+A unique feature of this script is the way it will retain (and eventually delete) old backups to conserve space, and yet maintain significant backup history. In this method you will have the following full backups:
 
 * Everyday for the past two weeks (14 backups)
 * Every saturday for the past 2 months (8 or 9 backups)
@@ -55,8 +55,27 @@ To disable this feature, comment out the following line from backup.inc.php:
     
 ### Hourly backups
 
-You can optionally run the backups every hour. Hourly backups will be available for the last 72 hours. Beyond that, Midnight (00) hour backups will be available according to the backup deletion schedule outlined above.
-    
+You can optionally run the backups every hour. Hourly backups will be available for the last 72 hours. Beyond that, Midnight (00) hour backups will be available according to the daily backup deletion schedule outlined above.
+
+### Weekly backup deletion schedule
+
+You can optionally run the backups each week. Weekly backups will be retained according to the following schedule:
+
+* Each week going back 12 weeks (~3 months) (12 backups)
+* Each month going back 36 weeks (~9 months) (9 backups)
+* One backup per year going back forever
+
+### Configuration
+
+There are several variables that may be set to change the function of the backup script. Below is a list of them.
+
+* __awsAccessKey__ - _string_ - Your Amazon Access Key
+* __awsSecretKey__ - _string_ - You Amazon Secret Key
+* __awsBucket__ - _string_ - The name of the bucket to put backups into
+* __debug__ - _boolean_ - Whether or not to emit debug messages
+* __mysqlDumpOptions__ - _string_ - Any options that you want to send to the mysqldump command during backups.
+* __schedule__ - _string_ - One of: 'weekly', 'daily', or 'hourly' - Tells the script how often you are backing up so that it can do the right thing to remove old backups.
+
 ### Requirements
 
 * PHP 5 or higher
@@ -71,5 +90,4 @@ My name is [Ian](http://www.ianneubert.com/). I wrote this small program to help
 
 ## ToDo
 
-* Add configuration documentation
-* Comment code
+* Add ability to use S3 Reduced Redundancy Storage to save money.

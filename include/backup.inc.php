@@ -1,5 +1,5 @@
 <?php
-// can't just kill the script
+// don't kill the script
 set_time_limit(0);
 
 // includes
@@ -9,7 +9,17 @@ require_once('S3.php');
 $s3 = new S3(awsAccessKey, awsSecretKey);
 
 //delete old backups
-deleteBackups();
+switch (schedule) {
+	case "weekly":
+		deleteWeeklyBackups();
+		break;
+	case "hourly":
+		deleteHourlyBackups();
+		break;
+	default:
+		deleteDailyBackups();
+		break;	
+}
 
 //Setup variables
 $mysql_backup_options = mysqlDumpOptions;
@@ -20,7 +30,7 @@ $mysql_backup_options = mysqlDumpOptions;
 function backupFiles($targets, $prefix = '') {
   global $s3;
   
-  if (hourly) deleteHourlyBackups($prefix);
+  if (schedule == "hourly") deleteHourlyBackups($prefix);
   
   foreach ($targets as $target) {
     
@@ -58,7 +68,7 @@ function backupFiles($targets, $prefix = '') {
 function backupDBs($hostname, $username, $password, $prefix, $post_backup_query = '') {
   global $DATE, $s3, $mysql_backup_options;
   
-  if (hourly) deleteHourlyBackups($prefix);
+	if (schedule == "hourly") deleteHourlyBackups($prefix);
   
   // Connecting, selecting database
   $link = mysql_connect($hostname, $username, $password) or die('Could not connect: ' . mysql_error());
@@ -99,44 +109,79 @@ function backupDBs($hostname, $username, $password, $prefix, $post_backup_query 
 
 function deleteHourlyBackups($target_prefix) {
   global $s3;
+
+	deleteDailyBackups();
   
   //delete hourly backups, 72 hours before now, except the midnight (00) backup
   $set_date = strtotime('-72 hours');
-  if (hourly) {
+  if (schedule == "hourly") {
     for ($i = 1; $i <= 23; $i++) {
       $prefix = s3Path('','',$set_date,true).$target_prefix."/".str_pad((string)$i,2,"0",STR_PAD_LEFT)."/";
-      if (debug == true) echo $prefix."\n";
+      if (debug == true) echo("Deleting hourly backup: " . $prefix . "\n");
       deletePrefix($prefix);
     }
   }
 }
 
-function deleteBackups() {
+function deleteWeeklyBackups() {
+	global $s3;
+	
+	//delete the backup from 36 weeks ago
+	$set_date = strtotime('-36 weeks');
+	$prefix = s3Path('','',$set_date,false);
+	
+	//only if it wasn't in January
+  if ((int)date('n',$set_date) !== 1) {
+		if (debug == true) echo "Deleting backup from 36 weeks ago: ".$prefix."\n";
+
+	  //delete each key found
+	  deletePrefix($prefix);
+	} else {
+		if (debug == true) echo "Will NOT delete backup from 36 weeks ago, because that was the January week: ".$prefix."\n";
+	}
+	
+	//delete the backup from 16 weeks ago
+	$set_date = strtotime('-16 weeks');
+	$prefix = s3Path('','',$set_date,false);
+	
+	//only if it wasn't the 1st 7 days of the month
+  if ((int)date('j',$set_date) > 7) {
+	  if (debug == true) echo "Deleting backup from 16 weeks ago: ".$prefix."\n";
+
+		deletePrefix($prefix);
+	} else {
+		if (debug == true) echo "Will NOT delete backup from 16 weeks ago, because that was the first week: ".$prefix."\n";
+	}
+}
+
+function deleteDailyBackups() {
   global $s3;
   
   //delete the backup from 2 months ago
   $set_date = strtotime('-2 months');
   
-  //only if it wasn't the first of the month
-  if ((int)date('j',$set_date) === 1) return true;
-  
-  //set s3 "dir" to delete
-  $prefix = s3Path('','',$set_date,false);
-  
-  if (debug == true) echo "Deleting: ".$prefix."\n";
-  
-  //delete each key found
-  deletePrefix($prefix);
+  //only if it wasn't the first of the month or a Saturday
+  if ((int)date('j',$set_date) !== 1) {
+		//set s3 "dir" to delete
+	  $prefix = s3Path('','',$set_date,false);
+
+	  if (debug == true) echo "Deleting backup from 2 months ago: ".$prefix."\n";
+
+	  //delete each key found
+	  deletePrefix($prefix);
+	}
   
   //delete the backup from 2 weeks ago
-  $set_date = strtotime('-2 weeks');
-  
-  //only if it wasn't a saturday or the 1st
-  if ((int)date('j',$set_date) === 1 || (string)date('l',$set_date) === "Saturday") return true;
-  $prefix = s3Path('','',$set_date,false);
-  if (debug == true) echo "Deleting: ".$prefix."\n";
-  
-  deletePrefix($prefix);
+	$set_date = strtotime('-2 weeks');
+	
+	//only if it wasn't a saturday or the 1st
+  if ((int)date('j',$set_date) !== 1 && (string)date('l',$set_date) !== "Saturday") {
+		$prefix = s3Path('','',$set_date,false);
+	  if (debug == true) echo "Deleting backup from 2 weeks ago: ".$prefix."\n";
+
+		deletePrefix($prefix);
+	}
+		
 }
 
 function deletePrefix($prefix) {
@@ -156,7 +201,7 @@ function s3Path($prefix, $name, $timestamp = null, $force_hourly = null) {
   
   $date = date("Y/m/d/",$timestamp);
   
-  if (is_null($force_hourly) && hourly) {
+  if (is_null($force_hourly) && schedule == "hourly") {
     return "backups/".$date.$prefix.'/'.date('H',$timestamp).$name;
   } else{
     return "backups/".$date.$prefix.$name;
