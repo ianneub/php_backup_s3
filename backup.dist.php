@@ -1,17 +1,25 @@
 <?php
-// AWS access info
-define('awsAccessKey', '');
-define('awsSecretKey', '');
-define('awsBucket', '');
-define('debug',false);
-ini_set('date.timezone', 'America/Los_Angeles');
 
-//Pass these options to mysqldump
-define('mysqlDumpOptions', '--quote-names --quick --add-drop-table --add-locks --allow-keywords --disable-keys --extended-insert --single-transaction --create-options --comments --net_buffer_length=16384');
+/*
 
-define('schedule','daily'); // Will this script run weekly, daily, or hourly?
+The following must be configured before running the script.
+
+*/
+
+define('awsAccessKey', ''); // required
+define('awsSecretKey', ''); // required
+define('awsBucket', ''); // required
+
+// Will this script run "weekly", "daily", or "hourly"?
+define('schedule','daily'); // required
 
 require_once('include/backup.inc.php');
+
+// You may place any number of .php files in the backups folder. They will be executed here.
+foreach (glob("backups/*.php") as $filename)
+{
+    include $filename;
+}
 
 /*
 

@@ -17,6 +17,7 @@ I've used this program in production for over a year with no problems. But, your
 1. Copy the backup.dist.php file to a new file name, like backup.php
 2. Add your Amazon AWS access key, password, and bucket in the backup.php file provided.
 3. Customize the files and database servers that are backed up.
+  * You may optionally list any number of .php files underneath the "backups" folder. Each one will be executed.
 4. Upload to your server.
 5. Setup a cronjob to run the backups for you!
 
@@ -67,14 +68,22 @@ You can optionally run the backups each week. Weekly backups will be retained ac
 
 ### Configuration
 
-There are several variables that may be set to change the function of the backup script. Below is a list of them.
+There are several constants that may be set to change the function of the backup script. Below is a list of them.
 
-* __awsAccessKey__ - _string_ - Your Amazon Access Key
-* __awsSecretKey__ - _string_ - You Amazon Secret Key
-* __awsBucket__ - _string_ - The name of the bucket to put backups into
-* __debug__ - _boolean_ - Whether or not to emit debug messages
-* __mysqlDumpOptions__ - _string_ - Any options that you want to send to the mysqldump command during backups.
+#### Required
+
+* __awsAccessKey__ - _string_ - Your Amazon Access Key. _Required_.
+* __awsSecretKey__ - _string_ - Your Amazon Secret Key. _Required_.
+* __awsBucket__ - _string_ - The name of the bucket to put backups into. _Required_.
+* __schedule__ - _string_ - One of "hourly", "daily", or "weekly". _Required_.
+
+#### Optional
+
+* __awsEndpoint__ - _string_ - Set the endpoint URL of the server that speaks the S3 API. Default is s3.amazonaws.com. _Optional_.
+* __debug__ - _boolean_ - Whether or not to emit debug messages. Default is false. _Optional_.
+* __mysqlDumpOptions__ - _string_ - Any options that you want to send to the mysqldump command during backups. _Optional_.
 * __schedule__ - _string_ - One of: 'weekly', 'daily', or 'hourly' - Tells the script how often you are backing up so that it can do the right thing to remove old backups.
+* __timezone__ - _string_ - System timezone, default is 'America/Los_Angeles', _Optional_.
 
 ### Requirements
 

@@ -1,12 +1,28 @@
 <?php
-// don't kill the script
+// don't kill the long running script
 set_time_limit(0);
+
+if (!defined('date.timezone')) {
+	ini_set('date.timezone', 'America/Los_Angeles');
+}
+
+if (!defined('debug')) {
+	define('debug', false);
+}
+
+if (!defined('awsEndpoint')) {
+	define('awsEndpoint', 's3.amazonaws.com');
+}
+
+if (!defined('mysqlDumpOptions')) {
+	define('mysqlDumpOptions', '--quote-names --quick --add-drop-table --add-locks --allow-keywords --disable-keys --extended-insert --single-transaction --create-options --comments --net_buffer_length=16384');
+}
 
 // includes
 require_once('S3.php');
 
 //Setup S3 class
-$s3 = new S3(awsAccessKey, awsSecretKey);
+$s3 = new S3(awsAccessKey, awsSecretKey, false, awsEndpoint);
 
 //delete old backups
 switch (schedule) {
@@ -105,6 +121,35 @@ function backupDBs($hostname, $username, $password, $prefix, $post_backup_query 
   // Closing connection
   mysql_close($link);
   
+}
+
+function xtrabackupDBs($database, $username, $password, $xtrabackup, $datadir, $innodb_log_file_size, $prefix, $post_backup_query = '') {
+  global $DATE, $s3, $mysql_backup_options;
+  
+  if (schedule == "hourly") deleteHourlyBackups($prefix);
+  
+  // Get backup of schema
+  `/usr/bin/mysqldump $mysql_backup_options --no-data --host=$hostname --user=$username --password='$password' $database | bzip2  > $database-structure-backup.sql.bz2`;
+  $s3->putObjectFile("$database-structure-backup.sql.bz2",awsBucket,s3Path($prefix,"/".$database."-structure-backup.sql.bz2"));
+  `rm -rf $database-structure-backup.sql.bz2`;
+  
+  // Get backup of innodb file
+  `$xtrabackup --backup --datadir=$datadir --innodb_log_file_size=$innodb_log_file_size --target=/root/xtrabackup`;
+  `$xtrabackup --prepare --datadir=$datadir --innodb_log_file_size=$innodb_log_file_size --target=/root/xtrabackup`;
+  `cd /root/xtrabackup && tar jcvf $database-data-backup.tar.bz2 *`;
+  $s3->putObjectFile("/root/xtrabackup/$database-data-backup.tar.bz2",awsBucket,s3Path($prefix,"/".$database."-data-backup.tar.bz2"));
+  `rm -rf /root/xtrabackup`;
+  
+  // Connecting, selecting database
+  $link = mysql_connect($hostname, $username, $password) or die('Could not connect: ' . mysql_error());
+  
+  //Run post backup queries if needed
+  if ($post_backup_query != '') {
+    $result = mysql_query($post_backup_query) or die('Query failed: ' . mysql_error());
+  }
+  
+  // Closing connection
+  mysql_close($link);
 }
 
 function deleteHourlyBackups($target_prefix) {

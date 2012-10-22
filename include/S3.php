@@ -327,7 +327,7 @@ class S3
 			$rest->setParameter('marker', $nextMarker);
 			if ($delimiter !== null && $delimiter !== '') $rest->setParameter('delimiter', $delimiter);
 
-			if (($response = $rest->getResponse(true)) == false || $response->code !== 200) break;
+			if (($response = $rest->getResponse()) == false || $response->code !== 200) break;
 
 			if (isset($response->body, $response->body->Contents))
 			foreach ($response->body->Contents as $c)
@@ -471,7 +471,7 @@ class S3
 		if ($input === false) return false;
 		$rest = new S3Request('PUT', $bucket, $uri, self::$endpoint);
 
-		if (is_string($input)) $input = array(
+		if (!is_array($input)) $input = array(
 			'data' => $input, 'size' => strlen($input),
 			'md5sum' => base64_encode(md5($input, true))
 		);
@@ -652,7 +652,7 @@ class S3
 		foreach ($metaHeaders as $h => $v) $rest->setAmzHeader('x-amz-meta-'.$h, $v);
 		if ($storageClass !== self::STORAGE_CLASS_STANDARD) // Storage class
 			$rest->setAmzHeader('x-amz-storage-class', $storageClass);
-		$rest->setAmzHeader('x-amz-acl', $acl); // Added rawurlencode() for $srcUri (thanks a.yamanoi)
+		$rest->setAmzHeader('x-amz-acl', $acl);
 		$rest->setAmzHeader('x-amz-copy-source', sprintf('/%s/%s', $srcBucket, rawurlencode($srcUri)));
 		if (sizeof($requestHeaders) > 0 || sizeof($metaHeaders) > 0)
 			$rest->setAmzHeader('x-amz-metadata-directive', 'REPLACE');
@@ -728,7 +728,7 @@ class S3
 			$rest->error = array('code' => $rest->code, 'message' => 'Unexpected HTTP status');
 		if ($rest->error !== false)
 		{
-			self::__triggerError(sprintf("S3::setBucketLogging({$bucket}, {$uri}): [%s] %s",
+			self::__triggerError(sprintf("S3::setBucketLogging({$bucket}, {$targetBucket}): [%s] %s",
 			$rest->error['code'], $rest->error['message']), __FILE__, __LINE__);
 			return false;
 		}
@@ -965,7 +965,7 @@ class S3
 	public static function getAuthenticatedURL($bucket, $uri, $lifetime, $hostBucket = false, $https = false)
 	{
 		$expires = time() + $lifetime;
-		$uri = str_replace(array('%2F', '%2B'), array('/', '+'), rawurlencode($uri)); // URI should be encoded (thanks Sean O'Dea)
+		$uri = str_replace(array('%2F', '%2B'), array('/', '+'), rawurlencode($uri));
 		return sprintf(($https ? 'https' : 'http').'://%s/%s?AWSAccessKeyId=%s&Expires=%u&Signature=%s',
 		// $hostBucket ? $bucket : $bucket.'.s3.amazonaws.com', $uri, self::$__accessKey, $expires,
 		$hostBucket ? $bucket : 's3.amazonaws.com/'.$bucket, $uri, self::$__accessKey, $expires,
@@ -1405,6 +1405,57 @@ class S3
 
 
 	/**
+	* List your invalidation batches for invalidateDistribution() in a CloudFront distribution
+	*
+	* http://docs.amazonwebservices.com/AmazonCloudFront/latest/APIReference/ListInvalidation.html
+	* returned array looks like this:
+	*	Array
+	*	(
+	*		[I31TWB0CN9V6XD] => InProgress
+	*		[IT3TFE31M0IHZ] => Completed
+	*		[I12HK7MPO1UQDA] => Completed
+	*		[I1IA7R6JKTC3L2] => Completed
+	*	)
+    *
+	* @param string $distributionId Distribution ID from listDistributions()
+	* @return array
+	*/
+	public static function getDistributionInvalidationList($distributionId)
+	{
+		if (!extension_loaded('openssl'))
+		{
+			self::__triggerError(sprintf("S3::getDistributionInvalidationList(): [%s] %s",
+			"CloudFront functionality requires SSL"), __FILE__, __LINE__);
+			return false;
+		}
+
+		$useSSL = self::$useSSL;
+		self::$useSSL = true; // CloudFront requires SSL
+		$rest = new S3Request('GET', '', '2010-11-01/distribution/'.$distributionId.'/invalidation', 'cloudfront.amazonaws.com');
+		$rest = self::__getCloudFrontResponse($rest);
+		self::$useSSL = $useSSL;
+
+		if ($rest->error === false && $rest->code !== 200)
+			$rest->error = array('code' => $rest->code, 'message' => 'Unexpected HTTP status');
+		if ($rest->error !== false)
+		{
+			trigger_error(sprintf("S3::getDistributionInvalidationList('{$distributionId}'): [%s]",
+			$rest->error['code'], $rest->error['message']), E_USER_WARNING);
+			return false;
+		}
+		elseif ($rest->body instanceof SimpleXMLElement && isset($rest->body->InvalidationSummary))
+		{
+			$list = array();
+			foreach ($rest->body->InvalidationSummary as $summary)
+				$list[(string)$summary->Id] = (string)$summary->Status;
+
+			return $list;
+		}
+		return array();
+	}
+
+
+	/**
 	* Get a DistributionConfig DOMDocument
 	*
 	* http://docs.amazonwebservices.com/AmazonCloudFront/latest/APIReference/index.html?PutConfig.html
@@ -1736,7 +1787,6 @@ final class S3Request
 			$query = substr($this->uri, -1) !== '?' ? '?' : '&';
 			foreach ($this->parameters as $var => $value)
 				if ($value == null || $value == '') $query .= $var.'&';
-				// Parameters should be encoded (thanks Sean O'Dea)
 				else $query .= $var.'='.rawurlencode($value).'&';
 			$query = substr($query, 0, -1);
 			$this->uri .= $query;
@@ -1773,7 +1823,7 @@ final class S3Request
 		{
 			curl_setopt($curl, CURLOPT_PROXY, S3::$proxy['host']);
 			curl_setopt($curl, CURLOPT_PROXYTYPE, S3::$proxy['type']);
-			if (isset(S3::$proxy['user'], S3::$proxy['pass']) && $proxy['user'] != null && $proxy['pass'] != null)
+			if (isset(S3::$proxy['user'], S3::$proxy['pass']) && S3::$proxy['user'] != null && S3::$proxy['pass'] != null)
 				curl_setopt($curl, CURLOPT_PROXYUSERPWD, sprintf('%s:%s', S3::$proxy['user'], S3::$proxy['pass']));
 		}
 
@@ -1791,7 +1841,8 @@ final class S3Request
 		// AMZ headers must be sorted
 		if (sizeof($amz) > 0)
 		{
-			sort($amz);
+			//sort($amz);
+			usort($amz, array(&$this, '__sortMetaHeadersCmp'));
 			$amz = "\n".implode("\n", $amz);
 		} else $amz = '';
 
@@ -1887,6 +1938,24 @@ final class S3Request
 		return $this->response;
 	}
 
+	/**
+	* Sort compare for meta headers
+	*
+	* @internal Used to sort x-amz meta headers
+	* @param string $a String A
+	* @param string $b String B
+	* @return integer
+	*/
+	private function __sortMetaHeadersCmp($a, $b)
+	{
+		$lenA = strpos($a, ':');
+		$lenB = strpos($b, ':');
+		$minLen = min($lenA, $lenB);
+		$ncmp = strncmp($a, $b, $minLen);
+		if ($lenA == $lenB) return $ncmp;
+		if (0 == $ncmp) return $lenA < $lenB ? -1 : 1;
+		return $ncmp;
+	}
 
 	/**
 	* CURL write callback
@@ -1948,7 +2017,7 @@ final class S3Request
 			elseif ($header == 'ETag')
 				$this->response->headers['hash'] = $value{0} == '"' ? substr($value, 1, -1) : $value;
 			elseif (preg_match('/^x-amz-meta-.*$/', $header))
-				$this->response->headers[$header] = is_numeric($value) ? (int)$value : $value;
+				$this->response->headers[$header] = $value;
 		}
 		return $strlen;
 	}
