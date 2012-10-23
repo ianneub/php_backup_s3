@@ -105,12 +105,7 @@ function backupDBs($hostname, $username, $password, $prefix, $post_backup_query 
 
   //Run backups on each DB found
   foreach ($databases as $database) {
-    `/usr/bin/mysqldump $mysql_backup_options --no-data --host=$hostname --user=$username --password='$password' $database | bzip2  > $database-structure-backup.sql.bz2`;
-    `/usr/bin/mysqldump $mysql_backup_options --host=$hostname --user=$username --password='$password' $database | bzip2 > $database-data-backup.sql.bz2`;
-    $s3->putObjectFile("$database-structure-backup.sql.bz2",awsBucket,s3Path($prefix,"/".$database."-structure-backup.sql.bz2"));
-    $s3->putObjectFile("$database-data-backup.sql.bz2",awsBucket,s3Path($prefix,"/".$database."-data-backup.sql.bz2"));
-    
-    `rm -rf $database-structure-backup.sql.bz2 $database-data-backup.sql.bz2`;
+    backupDB($hostname, $username, $password, $database, $prefix, $post_backup_query = '');
   }
   
   //Run post backup queries if needed
@@ -121,6 +116,17 @@ function backupDBs($hostname, $username, $password, $prefix, $post_backup_query 
   // Closing connection
   mysql_close($link);
   
+}
+
+function backupDB($hostname, $username, $password, $database, $prefix, $post_backup_query = '') {
+	global $s3, $mysql_backup_options;
+	
+	`/usr/bin/mysqldump $mysql_backup_options --no-data --host=$hostname --user=$username --password='$password' $database | bzip2  > $database-structure-backup.sql.bz2`;
+  `/usr/bin/mysqldump $mysql_backup_options --host=$hostname --user=$username --password='$password' $database | bzip2 > $database-data-backup.sql.bz2`;
+  $s3->putObjectFile("$database-structure-backup.sql.bz2",awsBucket,s3Path($prefix,"/".$database."-structure-backup.sql.bz2"));
+  $s3->putObjectFile("$database-data-backup.sql.bz2",awsBucket,s3Path($prefix,"/".$database."-data-backup.sql.bz2"));
+  
+  `rm -rf $database-structure-backup.sql.bz2 $database-data-backup.sql.bz2`;
 }
 
 function xtrabackupDBs($database, $username, $password, $xtrabackup, $datadir, $innodb_log_file_size, $prefix, $post_backup_query = '') {
