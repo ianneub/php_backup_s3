@@ -16,7 +16,7 @@ define('schedule','daily'); // required
 require_once('include/backup.inc.php');
 
 // You may place any number of .php files in the backups folder. They will be executed here.
-foreach (glob("backups/*.php") as $filename)
+foreach (glob(dirname(__FILE__) . "/backups/*.php") as $filename)
 {
     include $filename;
 }
