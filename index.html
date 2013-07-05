@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>PHP Backup S3 by ianneub</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>PHP Backup S3</h1>
+        <h2>Backup files and MySQL databases to S3 using PHP.</h2>
+        <a href="https://github.com/ianneub/php_backup_s3" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <p>This program will backup file paths and <a href="http://www.mysql.com">MySQL</a> databases to <a href="http://www.amazonaws.com/">Amazon's S3</a> storage cloud service.</p>
+
+<p>I've used this program in production for over a year with no problems. But, your results may vary.</p>
+
+<h2>
+<a name="features" class="anchor" href="#features"><span class="octicon octicon-link"></span></a>Features</h2>
+
+<ul>
+<li>Simple to use</li>
+<li>Backups all databases on a MySQL server</li>
+<li>Backups and compresses (using bzip2) directories and files</li>
+<li>Uses URL type storage keys, so it's easy to browse the backup bucket</li>
+<li>(optionally) Removes old backups according to a <a href="http://en.wikipedia.org/wiki/Grandfather-Father-Son_Backup">grandfather-father-son</a> based schedule</li>
+</ul><h2>
+<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<ol>
+<li>Copy the backup.dist.php file to a new file name, like backup.php</li>
+<li>Add your Amazon AWS access key, password, and bucket in the backup.php file provided.</li>
+<li>Customize the files and database servers that are backed up.
+
+<ul>
+<li>You may optionally list any number of .php files underneath the "backups" folder. Each one will be executed.</li>
+</ul>
+</li>
+<li>Upload to your server.</li>
+<li>Setup a cronjob to run the backups for you!</li>
+</ol><p>For example, create a file called /etc/cron.daily/backup and add this code to it:</p>
+
+<pre><code>#!/bin/bash
+/usr/bin/php /path/to/script/backup.php    
+exit 0
+</code></pre>
+
+<p>NOTE: Make sure to set the /etc/cron.daily/backup file to be executable. Like this:</p>
+
+<pre><code>chmod +x /etc/cron.daily/backup
+</code></pre>
+
+<h2>
+<a name="about-this-script" class="anchor" href="#about-this-script"><span class="octicon octicon-link"></span></a>About this script</h2>
+
+<p>This set of scripts ships with three files:</p>
+
+<ul>
+<li>backup.dist.php--This is an example of how to call the backup functions</li>
+<li>include/
+
+<ul>
+<li>backup.inc.php--All the backup functions are in here</li>
+<li>S3.php--This is the library to access Amazon S3</li>
+</ul>
+</li>
+</ul><h3>
+<a name="optional-daily-backup-deletion-schedule" class="anchor" href="#optional-daily-backup-deletion-schedule"><span class="octicon octicon-link"></span></a>(optional) Daily backup deletion schedule</h3>
+
+<p>A unique feature of this script is the way it will retain (and eventually delete) old backups to conserve space, and yet maintain significant backup history. In this method you will have the following full backups:</p>
+
+<ul>
+<li>Everyday for the past two weeks (14 backups)</li>
+<li>Every saturday for the past 2 months (8 or 9 backups)</li>
+<li>First day of the month going back forever</li>
+</ul><p>This allows you to keep a very detailed history of your files during the most recent time, but progressively remove backups as time goes on to save space. This feature can be turned off if you want to store all your backups, all the time.</p>
+
+<p>To disable this feature, comment out the following line from backup.inc.php:</p>
+
+<pre><code>deleteBackups($BACKUP_BUCKET);
+</code></pre>
+
+<h3>
+<a name="hourly-backups" class="anchor" href="#hourly-backups"><span class="octicon octicon-link"></span></a>Hourly backups</h3>
+
+<p>You can optionally run the backups every hour. Hourly backups will be available for the last 72 hours. Beyond that, Midnight (00) hour backups will be available according to the daily backup deletion schedule outlined above.</p>
+
+<h3>
+<a name="weekly-backup-deletion-schedule" class="anchor" href="#weekly-backup-deletion-schedule"><span class="octicon octicon-link"></span></a>Weekly backup deletion schedule</h3>
+
+<p>You can optionally run the backups each week. Weekly backups will be retained according to the following schedule:</p>
+
+<ul>
+<li>Each week going back 12 weeks (~3 months) (12 backups)</li>
+<li>Each month going back 36 weeks (~9 months) (9 backups)</li>
+<li>One backup per year going back forever</li>
+</ul><h3>
+<a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a>Configuration</h3>
+
+<p>There are several constants that may be set to change the function of the backup script. Below is a list of them.</p>
+
+<h4>
+<a name="required" class="anchor" href="#required"><span class="octicon octicon-link"></span></a>Required</h4>
+
+<ul>
+<li>
+<strong>awsAccessKey</strong> - <em>string</em> - Your Amazon Access Key. <em>Required</em>.</li>
+<li>
+<strong>awsSecretKey</strong> - <em>string</em> - Your Amazon Secret Key. <em>Required</em>.</li>
+<li>
+<strong>awsBucket</strong> - <em>string</em> - The name of the bucket to put backups into. <em>Required</em>.</li>
+<li>
+<strong>schedule</strong> - <em>string</em> - One of "hourly", "daily", or "weekly". <em>Required</em>.</li>
+</ul><h4>
+<a name="optional" class="anchor" href="#optional"><span class="octicon octicon-link"></span></a>Optional</h4>
+
+<ul>
+<li>
+<strong>awsEndpoint</strong> - <em>string</em> - Set the endpoint URL of the server that speaks the S3 API. Default is s3.amazonaws.com. <em>Optional</em>.</li>
+<li>
+<strong>debug</strong> - <em>boolean</em> - Whether or not to emit debug messages. Default is false. <em>Optional</em>.</li>
+<li>
+<strong>mysqlDumpOptions</strong> - <em>string</em> - Any options that you want to send to the mysqldump command during backups. <em>Optional</em>.</li>
+<li>
+<strong>schedule</strong> - <em>string</em> - One of: 'weekly', 'daily', or 'hourly' - Tells the script how often you are backing up so that it can do the right thing to remove old backups.</li>
+<li>
+<strong>timezone</strong> - <em>string</em> - System timezone, default is 'America/Los_Angeles', <em>Optional</em>.</li>
+</ul><h3>
+<a name="requirements" class="anchor" href="#requirements"><span class="octicon octicon-link"></span></a>Requirements</h3>
+
+<ul>
+<li>PHP 5 or higher</li>
+<li><a href="http://php.net/manual/en/intro.curl.php">PHP curl</a></li>
+<li><a href="http://php.net/mysql">PHP mysql</a></li>
+<li>GNU/Linux environment</li>
+<li>Other POSIX environments should work, but not tested</li>
+</ul><h2>
+<a name="about-the-author" class="anchor" href="#about-the-author"><span class="octicon octicon-link"></span></a>About the author</h2>
+
+<p>My name is <a href="http://www.ianneubert.com/">Ian</a>. I wrote this small program to help backup my virtual machines hosted at various places. I figured someone might be able to make use of it, so I've published it as open source. I also wanted a way to store my version history, learn to use git, and do it for free. Thanks <a href="http://github.com">github</a>!</p>
+
+<h2>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>This program is licensed under the MIT license. See the include/backup.inc.php file for a copy of the license.</p>
+
+<h2>
+<a name="todo" class="anchor" href="#todo"><span class="octicon octicon-link"></span></a>ToDo</h2>
+
+<ul>
+<li>Add ability to use S3 Reduced Redundancy Storage to save money.</li>
+</ul>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/ianneub/php_backup_s3/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/ianneub/php_backup_s3/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/ianneub/php_backup_s3"></a> is maintained by <a href="https://github.com/ianneub">ianneub</a>.</p>
+
+          <p>This page was generated by <a href="pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+  
+  </body>
+</html>
