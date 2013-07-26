@@ -17,7 +17,7 @@ I've used this program in production for over a year with no problems. But, your
 1. Copy the backup.dist.php file to a new file name, like backup.php
 2. Add your Amazon AWS access key, password, and bucket in the backup.php file provided.
 3. Customize the files and database servers that are backed up.
-  * You may optionally list any number of .php files underneath the "backups" folder. Each one will be executed.
+  * You may optionally create any number of .php files inside the "backups" directory. Each one will be executed.
 4. Upload to your server.
 5. Setup a cronjob to run the backups for you!
 
