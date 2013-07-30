@@ -93,6 +93,12 @@ There are several constants that may be set to change the function of the backup
 * GNU/Linux environment
 * Other POSIX environments should work, but not tested
 
+## Chef cookbook
+
+There is a [Chef](http://www.opscode.com/chef/) cookbook that will assist in setting up phpBackupS3 on your nodes:
+
+[https://github.com/ianneub/php_backup_s3-cookbook](https://github.com/ianneub/php_backup_s3-cookbook)
+
 ## About the author
 
 My name is [Ian](http://www.ianneubert.com/). I wrote this small program to help backup my virtual machines hosted at various places. I figured someone might be able to make use of it, so I've published it as open source. I also wanted a way to store my version history, learn to use git, and do it for free. Thanks [github](http://github.com)!
