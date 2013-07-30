@@ -92,6 +92,32 @@ There are several constants that may be set to change the function of the backup
 * [PHP mysql](http://php.net/mysql)
 * GNU/Linux environment
 * Other POSIX environments should work, but not tested
+* An AWS account with permissions to upload, list, and delete from an S3 bucket. See below.
+
+### S3 IAM Requirements
+
+In order for the backup script to be able to communicate with S3 you will need at least the following IAM permissions:
+
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": [
+            "s3:PutObject",
+            "s3:ListBucket",
+            "s3:DeleteObject"
+          ],
+          "Sid": "<uniquename>",
+          "Resource": [
+            "arn:aws:s3:::<your_bucket_here>",
+            "arn:aws:s3:::<your_bucket_here>/*"
+          ],
+          "Effect": "Allow"
+        }
+      ]
+    }
+
+Note that if you disable the backup deletion schedule then you will not need the `s3:ListBucket` or `s3:DeleteObject` actions above. In addition you can take out the `arn:aws:s3:::<your_bucket_here>` resource.
 
 ## Chef cookbook
 
