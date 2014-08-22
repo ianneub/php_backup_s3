@@ -84,7 +84,7 @@ function backupFiles($targets, $prefix = '') {
     $cleanTarget = urlencode($target);
     `tar -cjf "$prefix-$cleanTarget.tar.bz2" -C / "$target"`;
     
-    $backup_to = s3Path($prefix,"/".$target."-backup.tar.bz2");
+    $backup_to = s3Path($prefix,"/".$target."backup.tar.bz2");
     
     if (debug == true) {
       echo "Backing up to: ".$backup_to."\n";
@@ -271,7 +271,7 @@ function s3Path($prefix, $name, $timestamp = null, $force_hourly = null) {
   $date = date("Y/m/d/",$timestamp);
   
   if (is_null($force_hourly) && schedule == "hourly") {
-    return "backups/".$date.$prefix.'/'.date('H',$timestamp).$name;
+    return "backups/".$date.$prefix.'/'.date('H',$timestamp).'-'.$name;
   } else{
     return "backups/".$date.$prefix.$name;
   }
