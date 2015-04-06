@@ -2,7 +2,13 @@
 
 This program will backup file paths and [MySQL](http://www.mysql.com) databases to [Amazon's S3](http://www.amazonaws.com/) storage cloud service.
 
-I've used this program in production for over a year with no problems. But, your results may vary.
+I used this program in production for several years without problems. But, your results may vary.
+
+## Deprecation Notice
+
+I am no longer maintaining this project. I have since switched to the much more robust [backup/backup](https://github.com/backup/backup) project. And have also created a couple simple [Docker](https://www.docker.com/) images to facilitate database backups. See: [pg-dump-to-s3](https://registry.hub.docker.com/u/ianneub/pg-dump-to-s3/) and [mysqldump-to-s3](https://registry.hub.docker.com/u/ianneub/mysqldump-to-s3/).
+
+That said, please feel free to fork the code and use it however you like!
 
 ## Features
 
